@@ -1,7 +1,3 @@
-Certainly! Here's a template for a README.md for your shell project named "Lell". You can adjust and expand upon this template to better fit the specifics of your project and to add any additional sections that you think are necessary.
-
-markdown
-Copy code
 # Lell Shell
 
 Lell is a lightweight, Unix shell written in C. It's designed as a minimalistic command interpreter that runs in the terminal. While it aims to provide core functionalities expected from a shell, including executing commands, handling built-in commands like `cd` and `exit`, and maintaining a history of commands, Lell is intended for educational purposes and simpler use cases.
