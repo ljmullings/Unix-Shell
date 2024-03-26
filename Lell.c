@@ -1,29 +1,28 @@
+//lell.c by Laura Jia-Li Mullings
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define __USE_GNU // must be here
+#define __USE_GNU 
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
-// this code belongs to Laura Mullings!
+
 // Function Declarations
-#define MAX_HISTORY 100  // Maximum number of commands to store
+#define MAX_HISTORY 100
 void loop(void);
 char *read_line(void);
 char **split_line(char *line);
-int execute(char **args);
-int launch(char **args);
+int execute(char **args, int fd0, int fd1);
+int launch(char **args, int fd0, int fd1);
 int lell_cd(char **args);
 int lell_exit(char **args);
 int lell_history(char **args);
 void add_to_history(char *command);
 char *command_history[MAX_HISTORY];
-int history_count = 0;  // Number of commands in history
+int history_count = 0; 98
 int lell_pwd(char **args);
+int run_pipe_commands(char *line);
 
-
-
-// List commands, followed by corresponding functions.
 char *builtin_str[] = {
     "cd",
     "exit",
@@ -60,12 +59,74 @@ void loop(void)
         printf("lell> ");
         line = read_line();
         add_to_history(line);
-        args = split_line(line);
-        status = execute(args);
+        if (strstr(line, "|") != NULL)
+        {
+            status = run_pipe_commands(line);
+        }
+        else
+        {
+            args = split_line(line);
+            status = execute(args, -1, -1);
+            free(args);
+        }
 
         free(line);
-        free(args);
     } while (status);
+}
+
+int run_pipe_commands(char *line)
+{
+    int status = 0;
+    
+    char *end_command = strstr(line, "|");
+    *end_command = '\0';
+    char *command = line;
+    line = end_command + 1;
+
+    int fds[2]; 
+    if (pipe(fds) < 0)
+    {
+        perror("Could create pipe\n");
+        return -1;
+    }
+    int fd0 = -1;     // read
+    int fd1 = fds[1]; // write
+    while (command != NULL)
+    {
+        char **args = split_line(command);
+
+        status = execute(args, fd0, fd1);
+        free(args);
+
+        // strtok logic here!!!
+        command = line;
+        if (line != NULL && strstr(line, "|") != NULL)
+        {
+            end_command = strstr(line, "|");
+            *end_command = '\0';
+            line = end_command + 1;
+        }
+        else
+        {
+            line = NULL;
+        }
+        if (fd0 != -1)
+            close(fd0);
+        if (fd1 != -1)
+            close(fd1);
+        fd0 = fds[0]; // input file descriptor for the next command
+        fd1 = -1;     // output file descriptor
+        if (line != NULL)
+        { // there is another command to fork
+            if (pipe(fds) < 0)
+            {
+                perror("Could create pipe\n");
+                return -1;
+            }
+            fd1 = fds[1]; // write to stdout
+        }
+    }
+    return status;
 }
 
 char *read_line(void)
@@ -113,7 +174,7 @@ char **split_line(char *line)
     return tokens;
 }
 
-int launch(char **args)
+int launch(char **args, int fd0, int fd1)
 {
     pid_t pid, wpid;
     int status;
@@ -121,6 +182,16 @@ int launch(char **args)
     pid = fork();
     if (pid == 0)
     {
+        if (fd0 != -1)
+        {
+            close(0); 
+            dup2(fd0, 0);
+        }
+        if (fd1 != -1)
+        {
+            close(1);
+            dup2(fd1, 1);
+        }
         // Child
         if (execvp(args[0], args) == -1)
         {
@@ -132,7 +203,7 @@ int launch(char **args)
     {
         perror("lell");
     }
-    else
+    else if (fd1 == -1)
     {
         // Parent
         do
@@ -144,11 +215,11 @@ int launch(char **args)
     return 1;
 }
 
-int execute(char **args)
+int execute(char **args, int fd0, int fd1)
 {
     if (args[0] == NULL)
     {
-        // An empty command was entered.
+        // empty command
         return 1;
     }
 
@@ -160,7 +231,7 @@ int execute(char **args)
         }
     }
 
-    return launch(args);
+    return launch(args, fd0, fd1);
 }
 
 int lell_cd(char **args)
@@ -168,7 +239,7 @@ int lell_cd(char **args)
     if (args[1] == NULL)
     {
         fprintf(stderr, "lell: expected argument to \"cd\"\n");
-        // open current derr called . get its name then does pwd 
+        // open current derr called . get its name then does pwd
     }
     else
     {
@@ -224,7 +295,7 @@ int lell_history(char **args)
     }
     else
     {
-        // Display history
+        // display history
         for (int i = 0; i < history_count; i++)
         {
             printf("%d %s\n", i, command_history[i]);
