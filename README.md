@@ -25,30 +25,25 @@ Lell is a lightweight, Unix shell written in C. It's designed as a minimalistic 
    git clone https://github.com/yourusername/lell.git
 Navigate to the cloned directory:
 
-sh
-Copy code
 cd lell
 Compile the shell:
 
-sh
-Copy code
 gcc lell.c -o lell
 Run Lell:
 
-sh
-Copy code
 ./lell
-Usage
+
+## Usage
 Once you start Lell, you will be greeted with a prompt lell> . You can start typing your commands here. For example:
 
-sh
-Copy code
-lell> ls -l
-Built-in Commands
+- lell> ls -l
+
+## Built-in Commands
 Lell supports several built-in commands:
 
 cd [directory]: Change the current working directory.
 exit: Exit the shell.
 history: Display the last 100 commands. Use history [offset] to execute a command from history and history -c to clear the command history.
-Contributing
+
+### Contributing
 Contributions are welcome! If you have ideas for improvements or have found a bug, please open an issue or submit a pull request.
